@@ -3,7 +3,7 @@ name = "sauron-python"
 version = "0.1.1"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
     { name = "Masuri", email = "psh0258@gmail.com" },
