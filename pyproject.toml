@@ -8,7 +8,10 @@ license = "MIT"
 authors = [
     { name = "Masuri", email = "psh0258@gmail.com" },
 ]
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "urllib3>=2.6.3",
+]
 
 [build-system]
 requires = ["hatchling"]
