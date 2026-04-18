@@ -84,7 +84,7 @@ class AsyncWorker:
 
 
     async def _process_queue(self) -> None:
-        if self._queue is None:
+        if self._queue is None or self._loop is None:
             return
         try:
             while True:
@@ -96,7 +96,7 @@ class AsyncWorker:
                 job_task = self._loop.create_task(self._run_job(job))
                 self._active_jobs.add(job_task)
                 queue_ref = self._queue
-                job_task.add_done_callback(lambda task: self._on_task_complete(task, queue_ref))
+                job_task.add_done_callback(lambda job: self._on_task_complete(job, queue_ref))
 
                 await asyncio.sleep(0) # Yield to let the event loop run other tasks
         except asyncio.CancelledError:
@@ -104,9 +104,9 @@ class AsyncWorker:
             pass
 
     
-    def _on_task_complete(self, task: asyncio.Task[None], queue: asyncio.Queue[Any]) -> None:
+    def _on_task_complete(self, job: asyncio.Task[None], queue: asyncio.Queue[Any]) -> None:
         try:
-            task.result()
+            job.result()
         except asyncio.CancelledError:
             pass
         except Exception as e:
@@ -114,7 +114,7 @@ class AsyncWorker:
         finally:
             if queue is not None:
                 queue.task_done()
-            self._active_jobs.discard(task)
+            self._active_jobs.discard(job)
 
 
     async def _run_job(self, job: Callable[[], Any]) -> None:
