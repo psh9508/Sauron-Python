@@ -1,27 +1,31 @@
 import asyncio
 import httpx
-import urllib3
 
 from sauron_python.core.async_worker import AsyncWorker
+from sauron_python.models.envelope import Envelope
 
 
 class AsyncHttpTransport:
-    def __init__(self, options):
+    def __init__(self):
         self._worker = AsyncWorker()
         self._loop = asyncio.get_running_loop()
-        self.SAURON_ENDPOINT = options.get('endpoint', 'http://127.0.0.1:8002/test')
+        self._client = httpx.AsyncClient()
 
 
-    def send_envelope(self, envelope):
+    def send_envelope(self, envelope: Envelope):
         async def asend_request_wrapper():
             await self._asend_request(envelope)
 
         self._worker.enqueue(asend_request_wrapper)
 
 
-    async def _asend_request(self, envelope):
-        async with httpx.AsyncClient() as client:
-            return await client.post(
-                self.SAURON_ENDPOINT,
-                json=envelope.to_dict()
-            )
+    async def _asend_request(self, envelope: Envelope):
+        return await self._client.post(
+            envelope.endpoint,
+            json=envelope.payload
+        )
+
+
+    async def close(self):
+        self._worker.kill()
+        await self._client.aclose()

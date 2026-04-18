@@ -10,7 +10,7 @@ authors = [
 ]
 dependencies = [
     "httpx>=0.28.1",
-    "urllib3>=2.6.3",
+    "pydantic>=2.0",
 ]
 
 [build-system]
