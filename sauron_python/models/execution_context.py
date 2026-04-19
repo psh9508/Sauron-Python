@@ -4,7 +4,6 @@ from typing import Any, Deque
 
 DEFAULT_MAX_BREADCRUMBS = 100
 
-# Scope
 class ExecutionContext:
     def __init__(self):
         self._breadcrumbs : Deque[dict[str, Any]] = deque()
@@ -12,7 +11,7 @@ class ExecutionContext:
     
     def add_breadcrumb(self, crumb: dict[str, Any]):
         if crumb.get("timestamp") is None:
-            crumb["timestamp"] = datetime.now(timezone.utc)
+            crumb["timestamp"] = datetime.now(timezone.utc).isoformat()
         if crumb.get("type") is None:
             crumb["type"] = "default"
 
