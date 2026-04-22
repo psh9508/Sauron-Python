@@ -1,7 +1,6 @@
 import logging
 import sys
 import traceback
-from contextvars import ContextVar
 from typing import Sequence
 
 from sauron_python.core.integrations import Integration
@@ -10,13 +9,15 @@ from sauron_python.core.integrations.logging import LoggingIntegration
 from sauron_python.core.suron_client import SauronClient
 from sauron_python.models.execution_context import ExecutionContext
 
+logger = logging.getLogger(__name__)
+
 _DEFAULT_INTEGRATIONS: list[type[Integration]] = [
     LoggingIntegration,
     ExcepthookIntegration,
 ]
 
-_client: ContextVar[SauronClient | None] = ContextVar("sauron_client", default=None)
-_context: ContextVar[ExecutionContext | None] = ContextVar("execution_context", default=None)
+_client: SauronClient | None = None
+_context: ExecutionContext | None = None
 
 
 def _setup_integrations(integrations: Sequence[type[Integration]]) -> None:
@@ -25,17 +26,19 @@ def _setup_integrations(integrations: Sequence[type[Integration]]) -> None:
 
 
 def init(*, repository_id: int, endpoint: str):
-    _client.set(SauronClient(repository_id=repository_id, endpoint=endpoint))
-    _context.set(ExecutionContext())
+    global _client, _context
+    _client = SauronClient(repository_id=repository_id, endpoint=endpoint)
+    _context = ExecutionContext()
     _setup_integrations(_DEFAULT_INTEGRATIONS)
+    logger.info("Sauron initialized (repository_id=%s, endpoint=%s)", repository_id, endpoint)
 
 
 def get_client() -> SauronClient | None:
-    return _client.get()
+    return _client
 
 
 def get_context() -> ExecutionContext | None:
-    return _context.get()
+    return _context
 
 
 def add_breadcrumb(crumb: dict):
@@ -44,11 +47,11 @@ def add_breadcrumb(crumb: dict):
         ctx.add_breadcrumb(crumb)
 
 
-def capture_message(message: str):
-    client = get_client()
-    if client is None:
-        return
-    client.send({"message": message})
+# def capture_message(message: str):
+#     client = get_client()
+#     if client is None:
+#         return
+#     client.send({"message": message})
 
 
 def capture_exception(error: BaseException | None = None):
