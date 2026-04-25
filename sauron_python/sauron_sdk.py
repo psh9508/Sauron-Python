@@ -47,27 +47,21 @@ def add_breadcrumb(crumb: dict):
         ctx.add_breadcrumb(crumb)
 
 
-# def capture_message(message: str):
-#     client = get_client()
-#     if client is None:
-#         return
-#     client.send({"message": message})
-
-
-def capture_exception(error: BaseException | None = None):
-    client = get_client()
-    if client is None:
-        return
-
-    if error is None:
-        exc_info = sys.exc_info()
-        if exc_info[0] is None:
-            return
-        error = exc_info[1]
-
+def _build_message_event(*, level: str, body: str, category: str) -> dict:
     ctx = get_context()
     breadcrumbs = list(ctx._breadcrumbs) if ctx is not None else []
 
+    return {
+        "message": {
+            "level": level,
+            "body": body,
+            "category": category,
+        },
+        "breadcrumbs": breadcrumbs,
+    }
+
+
+def _build_exception_event(error: BaseException) -> dict:
     tb = error.__traceback__
     frames = []
     if tb is not None:
@@ -81,7 +75,10 @@ def capture_exception(error: BaseException | None = None):
                 frame["code"] = line
             frames.append(frame)
 
-    event = {
+    ctx = get_context()
+    breadcrumbs = list(ctx._breadcrumbs) if ctx is not None else []
+
+    return {
         "exception": {
             "type": type(error).__name__,
             "value": str(error),
@@ -90,7 +87,19 @@ def capture_exception(error: BaseException | None = None):
         "breadcrumbs": breadcrumbs,
     }
 
-    client.send(event)
+
+def capture_exception(error: BaseException | None = None):
+    client = get_client()
+    if client is None:
+        return
+
+    if error is None:
+        exc_info = sys.exc_info()
+        if exc_info[0] is None:
+            return
+        error = exc_info[1]
+
+    client.send(_build_exception_event(error))
 
 
 def capture_exception_from_record(record: logging.LogRecord):
@@ -98,35 +107,14 @@ def capture_exception_from_record(record: logging.LogRecord):
     if client is None:
         return
 
-    ctx = get_context()
-    breadcrumbs = list(ctx._breadcrumbs) if ctx is not None else []
-
-    event: dict = {
-        "exception": {
-            "type": record.levelname,
-            "value": record.getMessage(),
-            "category": record.name,
-        },
-        "breadcrumbs": breadcrumbs,
-    }
-
-    if record.exc_info and record.exc_info[1] is not None:
-        error = record.exc_info[1]
-        tb = error.__traceback__
-        frames = []
-        if tb is not None:
-            for filename, lineno, name, line in traceback.extract_tb(tb):
-                frame = {
-                    "filename": filename,
-                    "lineno": lineno,
-                    "function": name,
-                }
-                if line:
-                    frame["code"] = line
-                frames.append(frame)
-
-        event["exception"]["type"] = type(error).__name__
-        event["exception"]["value"] = str(error)
-        event["exception"]["stacktrace"] = frames
+    _, exc_value, _ = record.exc_info or (None, None, None)
+    if exc_value is not None:
+        event = _build_exception_event(exc_value)
+    else:
+        event = _build_message_event(
+            level=record.levelname,
+            body=record.getMessage(),
+            category=record.name,
+        )
 
     client.send(event)
