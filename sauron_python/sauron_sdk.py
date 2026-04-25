@@ -6,6 +6,7 @@ from typing import Sequence
 from sauron_python.core.integrations import Integration
 from sauron_python.core.integrations.excepthook import ExcepthookIntegration
 from sauron_python.core.integrations.logging import LoggingIntegration
+from sauron_python.core.fingerprint import compute_fingerprint, compute_fingerprint_from_log
 from sauron_python.core.suron_client import SauronClient
 from sauron_python.models.execution_context import ExecutionContext
 
@@ -79,6 +80,7 @@ def _build_exception_event(error: BaseException) -> dict:
     breadcrumbs = list(ctx._breadcrumbs) if ctx is not None else []
 
     return {
+        "fingerprint": compute_fingerprint(type(error).__name__, frames),
         "exception": {
             "type": type(error).__name__,
             "value": str(error),
@@ -115,6 +117,11 @@ def capture_exception_from_record(record: logging.LogRecord):
             level=record.levelname,
             body=record.getMessage(),
             category=record.name,
+        )
+        event["fingerprint"] = compute_fingerprint_from_log(
+            logger_name=record.name,
+            level=record.levelname,
+            message_template=record.msg if isinstance(record.msg, str) else str(record.msg),
         )
 
     client.send(event)
