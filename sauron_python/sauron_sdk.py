@@ -48,45 +48,33 @@ def add_breadcrumb(crumb: dict):
         ctx.add_breadcrumb(crumb)
 
 
-def _build_message_event(*, level: str, body: str, category: str) -> dict:
-    ctx = get_context()
-    breadcrumbs = list(ctx._breadcrumbs) if ctx is not None else []
-
-    return {
-        "message": {
-            "level": level,
-            "body": body,
-            "category": category,
-        },
-        "breadcrumbs": breadcrumbs,
-    }
-
-
-def _build_exception_event(error: BaseException) -> dict:
-    tb = error.__traceback__
+def _extract_frames(raw_frames) -> list[dict]:
     frames = []
-    if tb is not None:
-        for filename, lineno, name, line in traceback.extract_tb(tb):
-            frame = {
-                "filename": filename,
-                "lineno": lineno,
-                "function": name,
-            }
-            if line:
-                frame["code"] = line
-            frames.append(frame)
+    for filename, lineno, name, line in raw_frames:
+        frame = {
+            "filename": filename,
+            "lineno": lineno,
+            "function": name,
+        }
+        if line:
+            frame["code"] = line
+        frames.append(frame)
+    return frames
 
+
+def _get_breadcrumbs() -> list[dict]:
     ctx = get_context()
-    breadcrumbs = list(ctx._breadcrumbs) if ctx is not None else []
+    return list(ctx._breadcrumbs) if ctx is not None else []
 
+
+def _build_event(*, type: str, value: str, stacktrace: list[dict]) -> dict:
     return {
-        "fingerprint": compute_fingerprint(type(error).__name__, frames),
-        "exception": {
-            "type": type(error).__name__,
-            "value": str(error),
-            "stacktrace": frames,
+        "event": {
+            "type": type,
+            "value": value,
+            "stacktrace": stacktrace,
         },
-        "breadcrumbs": breadcrumbs,
+        "breadcrumbs": _get_breadcrumbs(),
     }
 
 
@@ -101,7 +89,16 @@ def capture_exception(error: BaseException | None = None):
             return
         error = exc_info[1]
 
-    client.send(_build_exception_event(error))
+    tb = error.__traceback__
+    frames = _extract_frames(traceback.extract_tb(tb)) if tb is not None else []
+
+    event = _build_event(
+        type=type(error).__name__,
+        value=str(error),
+        stacktrace=frames,
+    )
+    event["fingerprint"] = compute_fingerprint(type(error).__name__, frames)
+    client.send(event)
 
 
 def capture_exception_from_record(record: logging.LogRecord):
@@ -111,12 +108,22 @@ def capture_exception_from_record(record: logging.LogRecord):
 
     _, exc_value, _ = record.exc_info or (None, None, None)
     if exc_value is not None:
-        event = _build_exception_event(exc_value)
+        tb = exc_value.__traceback__
+        frames = _extract_frames(traceback.extract_tb(tb)) if tb is not None else []
+
+        event = _build_event(
+            type=type(exc_value).__name__,
+            value=str(exc_value),
+            stacktrace=frames,
+        )
+        event["fingerprint"] = compute_fingerprint(type(exc_value).__name__, frames)
     else:
-        event = _build_message_event(
-            level=record.levelname,
-            body=record.getMessage(),
-            category=record.name,
+        frames = _extract_frames(traceback.extract_stack()[:-2])
+
+        event = _build_event(
+            type=record.levelname,
+            value=record.getMessage(),
+            stacktrace=frames,
         )
         event["fingerprint"] = compute_fingerprint_from_log(
             logger_name=record.name,
