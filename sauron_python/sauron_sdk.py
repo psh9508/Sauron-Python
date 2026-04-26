@@ -97,7 +97,7 @@ def capture_exception(error: BaseException | None = None):
         value=str(error),
         stacktrace=frames,
     )
-    event["fingerprint"] = compute_fingerprint(type(error).__name__, frames)
+    event["fingerprint"] = compute_fingerprint(type(error).__name__, str(error), frames)
     client.send(event)
 
 
@@ -116,7 +116,7 @@ def capture_exception_from_record(record: logging.LogRecord):
             value=str(exc_value),
             stacktrace=frames,
         )
-        event["fingerprint"] = compute_fingerprint(type(exc_value).__name__, frames)
+        event["fingerprint"] = compute_fingerprint(type(exc_value).__name__, str(exc_value), frames)
     else:
         frames = _extract_frames(traceback.extract_stack()[:-2])
 
