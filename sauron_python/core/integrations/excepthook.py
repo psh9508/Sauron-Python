@@ -3,13 +3,14 @@ from types import TracebackType
 from typing import Any
 
 from sauron_python.core.integrations import Integration
+from sauron_python.core.safe import capture_internal_exceptions
 
 
 class ExcepthookIntegration(Integration):
     identifier = "excepthook"
 
     @staticmethod
-    def setup_once() -> None:
+    def _install() -> None:
         old_excepthook = sys.excepthook
 
         def sauron_excepthook(
@@ -19,7 +20,8 @@ class ExcepthookIntegration(Integration):
         ) -> Any:
             import sauron_python.sauron_sdk as sauron
 
-            sauron.capture_exception(exc_value)
+            with capture_internal_exceptions():
+                sauron.capture_exception(exc_value)
 
             return old_excepthook(exc_type, exc_value, exc_tb)
 

@@ -1,14 +1,16 @@
-import asyncio
+import logging
+
 import httpx
 
 from sauron_python.core.async_worker import AsyncWorker
 from sauron_python.models.envelope import Envelope
 
+logger = logging.getLogger(__name__)
+
 
 class AsyncHttpTransport:
     def __init__(self):
         self._worker = AsyncWorker()
-        self._loop = asyncio.get_running_loop()
         self._client = httpx.AsyncClient()
 
 
@@ -20,10 +22,13 @@ class AsyncHttpTransport:
 
 
     async def _asend_request(self, envelope: Envelope):
-        return await self._client.post(
-            envelope.endpoint,
-            json=envelope.payload
-        )
+        try:
+            return await self._client.post(
+                envelope.endpoint,
+                json=envelope.payload
+            )
+        except Exception as e:
+            logger.debug("Failed to send envelope: %s", e)
 
 
     async def close(self):
