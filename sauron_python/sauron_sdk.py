@@ -1,3 +1,4 @@
+import atexit
 import logging
 import sys
 import traceback
@@ -20,6 +21,7 @@ _DEFAULT_INTEGRATIONS: list[type[Integration]] = [
 
 _client: SauronClient | None = None
 _context: ExecutionContext | None = None
+_atexit_registered: bool = False
 
 
 def _setup_integrations(integrations: Sequence[type[Integration]]) -> None:
@@ -27,11 +29,19 @@ def _setup_integrations(integrations: Sequence[type[Integration]]) -> None:
         integration.setup_once()
 
 
+def _close_at_exit() -> None:
+    if _client is not None:
+        _client.close()
+
+
 def init(*, repository_id: int, endpoint: str):
-    global _client, _context
+    global _client, _context, _atexit_registered
     _client = SauronClient(repository_id=repository_id, endpoint=endpoint)
     _context = ExecutionContext()
     _setup_integrations(_DEFAULT_INTEGRATIONS)
+    if not _atexit_registered:
+        atexit.register(_close_at_exit)
+        _atexit_registered = True
     logger.info("Sauron initialized (repository_id=%s, endpoint=%s)", repository_id, endpoint)
 
 
