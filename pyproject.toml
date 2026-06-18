@@ -1,6 +1,6 @@
 [project]
 name = "sauron-python"
-version = "0.2.0"
+version = "0.3.0"
 description = "Lightweight error tracking SDK for Python applications"
 readme = "README.md"
 requires-python = ">=3.11"
