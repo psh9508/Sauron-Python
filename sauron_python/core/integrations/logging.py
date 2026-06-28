@@ -7,7 +7,7 @@ from sauron_python.core.safe import capture_internal_exceptions
 DEFAULT_BREADCRUMB_LEVEL = logging.INFO
 DEFAULT_EVENT_LEVEL = logging.ERROR
 
-_IGNORED_LOGGERS: set[str] = {"sauron_python", "httpx", "httpcore"}
+_IGNORED_LOGGERS: set[str] = {"sauron_python", "httpx", "httpcore", "uvicorn.access", "uvicorn.error"}
 
 
 def ignore_logger(name: str) -> None:
