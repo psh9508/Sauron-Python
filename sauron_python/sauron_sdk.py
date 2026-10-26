@@ -34,15 +34,15 @@ def _close_at_exit() -> None:
         _client.close()
 
 
-def init(*, repository_id: int, endpoint: str):
+def init(*, repository_key: str, endpoint: str, repository_url: str | None = None):
     global _client, _context, _atexit_registered
-    _client = SauronClient(repository_id=repository_id, endpoint=endpoint)
+    _client = SauronClient(repository_key=repository_key, endpoint=endpoint, repository_url=repository_url)
     _context = ExecutionContext()
     _setup_integrations(_DEFAULT_INTEGRATIONS)
     if not _atexit_registered:
         atexit.register(_close_at_exit)
         _atexit_registered = True
-    logger.info("Sauron initialized (repository_id=%s, endpoint=%s)", repository_id, endpoint)
+    logger.info("Sauron initialized (endpoint=%s)", endpoint)
 
 
 def get_client() -> SauronClient | None:

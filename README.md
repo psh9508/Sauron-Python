@@ -16,8 +16,9 @@ pip install sauron-python
 from sauron_python import sauron_sdk
 
 sauron_sdk.init(
-    repository_id=1,
+    repository_key="<public key issued when registering the repository>",
     endpoint="https://your-sauron-backend.com/analyze",
+    # repository_url="https://gitlab.example.com/group/repo",  # required for GitLab repositories
 )
 ```
 
